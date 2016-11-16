@@ -1,0 +1,130 @@
+########################################################
+#      iTunes Web Sources Script for Mp3Tag            #
+#                                                      #
+#version 1.2                                           #
+#created by pone in May 2012                           #
+#modified by bigfuji in Nov 2016                       #
+########################################################
+
+
+########################################################
+#          SEARCH BY DIALOG                            #
+########################################################
+[Name]=iTunes
+[BasedOn]=http://itunes.apple.com
+[IndexUrl]=http://itunes.apple.com/search?term=%s&entity=album&limit=100
+[AlbumUrl]=http://itunes.apple.com/lookup?id=
+[WordSeperator]=+
+[IndexFormat]=%_preview%|%_url%|%Artist%|%Album%|%Tracks%|%Type%|%Copyright%|
+[SearchBy]=%artist% %album%
+[Encoding]=url-utf-8
+
+
+########################################################
+#          LIST OF SEARCH RESULTS DIALOG               #
+########################################################
+[ParserScriptIndex]=...
+debug "on" "d:\debug_itunes_A.html"
+findline "wrapperType\""
+
+do
+	joinuntil "}"	  
+	replace "\\\"" "\""
+	replace "?uo=4" ""
+
+	# PREVIEW
+	sayregexp "(?<=\"collectionViewUrl\":\").+?(?=\")" ", " "}"
+	say "|"
+
+	# URL
+	sayregexp "(?<=\"collectionId\":)\d+?(?=,)" ", " "}"
+	say "&entity=song&limit=200"
+	say "|"
+
+	# ARTIST
+	sayregexp "(?<=\"artistName\":\")[^\"]{1,75}(?=.)" ", " "}"
+	say "|"
+
+	# ALBUM
+	sayregexp "(?<=\"collectionName\":\").+?(?=\")" ", " "}"
+	say "|"
+
+	# TRACKS
+	sayregexp "(?<=\"trackCount\":)\d+?(?=,)" ", " "}"
+	say "|"
+
+	# TYPE
+	sayregexp "(?<=\"collectionType\":\").+?(?=\")" ", " "}"
+	say "|"
+
+	# COPYRIGHT
+	sayregexp "(?<=\"copyright\":\").+?(?=\")" ", " "}"
+	say "|"
+
+	saynewline
+	findline "wrapperType\"" 2 1
+while "{\"wrapperType" 201
+
+
+
+########################################################
+#          ADJUST TAG INFORMATION DIALOG               #
+########################################################
+[ParserScriptAlbum]=...
+debug "on" "d:\debug_itunes_B.html" "10"
+
+findline "wrapperType\""
+joinuntil "}"
+
+outputto "COVERURL"
+sayregexp "(?<=\"artworkUrl100\":\").+?(?=\")" ", " "}"
+
+outputto "ALBUMARTIST"
+sayregexp "(?<=\"artistName\":\").+?(?=\")" ", " "}"
+
+outputto "ALBUM"
+sayregexp "(?<=\"collectionName\":\").+?(?=\")" ", " "}"
+
+outputto "YEAR"
+sayregexp "(?<=\"copyright\":\")\d\d\d\d(?=.)" ", " "}"
+
+regexpreplace "(\d\d\d\d),?" "<<<year$1>>>"
+findinline "\"copyright\":\"" 1 1
+ifnot "<<<year"
+	gotochar 1
+	sayregexp "(?<=\"releaseDate\":\"<<<year)\d\d\d\d(?=>>>)" ", " "}"
+else
+	gotochar 1
+endif
+
+outputto "PUBLISHER"
+regexpreplace "<<<year\d*>>>" ""
+regexpreplace " +" " "
+sayregexp "(?<=\"copyright\":\").+?(?=\")" ", " "}"
+
+
+# TRACK LOOP
+findline "wrapperType\"" 2 1
+do
+	joinuntil "}"
+	replace "\\\"" "\""
+
+	outputto "TRACKS"
+	sayregexp "(?<=\"trackCensoredName\":\").+?(?=\")" ", " "}"
+	#sayregexp "(?<=\"trackName\":\").+?(?=\")" ", " "}"
+	say "|"
+
+	outputto "ARTIST"
+	sayregexp "(?<=\"artistName\":\").+?(?=\")" ", " "}"
+	say "|"
+
+	outputto "GENRE"
+	sayregexp "(?<=\"primaryGenreName\":\").+?(?=\")" ", " "}"
+	say "|"
+	
+	outputto "_LENGTH"
+	sayregexp "(?<=\"trackTimeMillis\":)\d+?(?=\D)" ", " "}"
+	say "|"
+
+	findline "wrapperType\"" 2 1
+while "{\"wrapperType"
